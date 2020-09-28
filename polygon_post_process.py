@@ -15,6 +15,7 @@ import math
 
 # import  parameters
 import vector_features
+import vector_gpd
 from vector_features import shape_opeation
 import parameters
 
@@ -100,22 +101,25 @@ def calculate_gully_topography(polygons_shp,dem_file,slope_file,aspect_file=None
     all_touched = True
 
     # #DEM
+    dem_file = io_function.get_file_path_new_home_folder(dem_file)
     if os.path.isfile(dem_file):
-        stats_list = ['min', 'max','mean', 'std']            #['min', 'max', 'mean', 'count','median','std']
+        stats_list = ['min', 'max','mean','median','std']            #['min', 'max', 'mean', 'count','median','std']
         if operation_obj.add_fields_from_raster(polygons_shp, dem_file, "dem", band=1,stats_list=stats_list,all_touched=all_touched) is False:
             return False
     else:
         basic.outputlogMessage("warning, DEM file not exist, skip the calculation of DEM information")
 
     # #slope
+    slope_file = io_function.get_file_path_new_home_folder(slope_file)
     if os.path.isfile(slope_file):
-        stats_list = ['min', 'max','mean', 'std']
+        stats_list = ['min', 'max','mean', 'median', 'std']
         if operation_obj.add_fields_from_raster(polygons_shp, slope_file, "slo", band=1,stats_list=stats_list,all_touched=all_touched) is False:
             return False
     else:
         basic.outputlogMessage("warning, slope file not exist, skip the calculation of slope information")
 
     # #aspect
+    aspect_file = io_function.get_file_path_new_home_folder(aspect_file)
     if aspect_file is not None and os.path.isfile(aspect_file):
         if io_function.is_file_exist(aspect_file) is False:
             return False
@@ -200,7 +204,11 @@ def calculate_gully_information(gullies_shp):
     if perimeter_area_list is not False:
         ratio_p_a = []
         for perimeter_area in perimeter_area_list:
-            r_value = (perimeter_area[0])**2 / perimeter_area[1]
+            try:
+                r_value = (perimeter_area[0])**2 / perimeter_area[1]
+            except ZeroDivisionError:
+                basic.outputlogMessage('warning, ZeroDivisionError: float division by zero')
+                r_value = 0
             ratio_p_a.append(r_value)
         operation_obj.add_one_field_records_to_shapefile(gullies_shp, ratio_p_a, 'ratio_p_a')
 
@@ -245,91 +253,7 @@ def remove_small_round_polygons(input_shp,output_shp,area_thr,ratio_thr):
 
     return True
 
-def evaluation_result(result_shp,val_shp):
-    """
-    evaluate the result based on IoU
-    :param result_shp: result shape file contains detected polygons
-    :param val_shp: shape file contains validation polygons
-    :return: True is successful, False otherwise
-    """
-    basic.outputlogMessage("evaluation result")
-    IoUs = vector_features.calculate_IoU_scores(result_shp,val_shp)
-    if IoUs is False:
-        return False
 
-    #save IoU to result shapefile
-    operation_obj = shape_opeation()
-    operation_obj.add_one_field_records_to_shapefile(result_shp, IoUs, 'IoU')
-
-    iou_threshold = parameters.get_IOU_threshold()
-    true_pos_count = 0
-    false_pos_count = 0
-    val_polygon_count = operation_obj.get_shapes_count(val_shp)
-    # calculate precision, recall, F1 score
-    for iou in IoUs:
-        if iou > iou_threshold:
-            true_pos_count  +=  1
-        else:
-            false_pos_count += 1
-
-    false_neg_count = val_polygon_count - true_pos_count
-    if false_neg_count < 0:
-        basic.outputlogMessage('warning, false negative count is smaller than 0, recall can not be trusted')
-
-    precision = float(true_pos_count) / (float(true_pos_count) + float(false_pos_count))
-    recall = float(true_pos_count) / (float(true_pos_count) + float(false_neg_count))
-    if (true_pos_count > 0):
-        F1score = 2.0 * precision * recall / (precision + recall)
-    else:
-        F1score = 0
-
-    #output evaluation reslult
-    evaluation_txt = "evaluation_report.txt"
-    f_obj = open(evaluation_txt,'w')
-    f_obj.writelines('true_pos_count: %d\n'%true_pos_count)
-    f_obj.writelines('false_pos_count: %d\n'% false_pos_count)
-    f_obj.writelines('false_neg_count: %d\n'%false_neg_count)
-    f_obj.writelines('precision: %.6f\n'%precision)
-    f_obj.writelines('recall: %.6f\n'%recall)
-    f_obj.writelines('F1score: %.6f\n'%F1score)
-    f_obj.close()
-
-    ##########################################################################################
-    ## another method for calculating false_neg_count base on IoU value
-    # calculate the IoU for validation polygons (ground truths)
-    IoUs = vector_features.calculate_IoU_scores(val_shp, result_shp)
-    if IoUs is False:
-        return False
-
-    # if the IoU of a validation polygon smaller than threshold, then it's false negative
-    false_neg_count = 0
-    idx_of_false_neg = []
-    for idx,iou in enumerate(IoUs):
-        if iou < iou_threshold:
-            false_neg_count +=  1
-            idx_of_false_neg.append(idx+1) # index start from 1
-
-    precision = float(true_pos_count) / (float(true_pos_count) + float(false_pos_count))
-    recall = float(true_pos_count) / (float(true_pos_count) + float(false_neg_count))
-    if (true_pos_count > 0):
-        F1score = 2.0 * precision * recall / (precision + recall)
-    else:
-        F1score = 0
-    # output evaluation reslult
-    evaluation_txt = "evaluation_report.txt"
-    f_obj = open(evaluation_txt, 'a')  # add to "evaluation_report.txt"
-    f_obj.writelines('\n\n** Count false negative by IoU**\n')
-    f_obj.writelines('true_pos_count: %d\n' % true_pos_count)
-    f_obj.writelines('false_pos_count: %d\n' % false_pos_count)
-    f_obj.writelines('false_neg_count_byIoU: %d\n' % false_neg_count)
-    f_obj.writelines('precision: %.6f\n' % precision)
-    f_obj.writelines('recall: %.6f\n' % recall)
-    f_obj.writelines('F1score: %.6f\n' % F1score)
-    # output the index of false negative
-    f_obj.writelines('\nindex (start from 1) of false negatives: %s\n' % ','.join([str(item) for item in idx_of_false_neg]))
-    f_obj.close()
-
-    pass
 
 
 def main(options, args):
@@ -353,6 +277,23 @@ def main(options, args):
     # copy output
     if io_function.copy_shape_file(input, output) is False:
         raise IOError('copy shape file %s failed'%input)
+    else:
+        # remove "_shapeInfo.shp" to make it calculate shape information again
+        os.system('rm *_shapeInfo.shp')
+
+    # remove narrow parts of mapped polygons
+    polygon_narrow_part_thr = parameters.get_digit_parameters_None_if_absence('', 'mapped_polygon_narrow_threshold', 'float')
+    #  if it is not None, then it will try to remove narrow parts of polygons
+    if polygon_narrow_part_thr is not None and polygon_narrow_part_thr > 0:
+        # use the buffer operation to remove narrow parts of polygons
+        basic.outputlogMessage("start removing narrow parts (thr %.2f) in polygons"%(polygon_narrow_part_thr*2))
+        if vector_gpd.remove_narrow_parts_of_polygons_shp_NOmultiPolygon(input, output, polygon_narrow_part_thr):
+            message = "Finished removing narrow parts (thr %.2f) in polygons and save to %s"%(polygon_narrow_part_thr*2,output)
+            basic.outputlogMessage(message)
+        else:
+            pass
+    else:
+        basic.outputlogMessage("warning, mapped_polygon_narrow_threshold is not in the parameter file, skip removing narrow parts")
 
     # calcuate area, perimeter of polygons
     if cal_add_area_length_of_polygon(output) is False:
@@ -395,12 +336,12 @@ def main(options, args):
     else:
         basic.outputlogMessage("warning, flow accumulation file not exist, skip the calculation of flow accumulation")
 
-    # evaluation result
-    val_path = parameters.get_validation_shape()
-    if os.path.isfile(val_path):
-        evaluation_result(output,val_path)
-    else:
-        basic.outputlogMessage("warning, validation polygon not exist, skip evaluation")
+    # # evaluation result
+    # val_path = parameters.get_validation_shape()
+    # if os.path.isfile(val_path):
+    #     evaluation_result(output,val_path)
+    # else:
+    #     basic.outputlogMessage("warning, validation polygon not exist, skip evaluation")
 
     pass
 

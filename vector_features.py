@@ -19,6 +19,9 @@ import  parameters
 
 #pyshp library
 import shapefile
+
+# some changes in 2.x the new changes are incompatible with previous versions (1.x)
+# many place need to change, such as "shapefile.Writer()"
 if shapefile.__version__ >= '2.0.0':
     raise ValueError('Current do not support pyshp version 2 or above, please use pyshp version 1.2.12')
 
@@ -147,8 +150,8 @@ class shape_opeation(object):
         shapes_list = org_obj.shapes()
 
         polygon_shapely = []
-        for temp in shapes_list:
-            polygon_shapely.append(shape_from_pyshp_to_shapely(temp))
+        for idx, temp in enumerate(shapes_list):
+            polygon_shapely.append(shape_from_pyshp_to_shapely(temp, shape_index=idx,shp_path=input_shp))
 
         # minimum_rotated_rectangle of the polygons (i.e., orientedminimumboundingbox in QGIS)
         polygon_min_r_rectangles = [item.minimum_rotated_rectangle for item in polygon_shapely]
@@ -376,7 +379,7 @@ class shape_opeation(object):
             elif isinstance(first_record, int):
                 attr_list = [field_name, 'N', 24, 0]
             elif isinstance(first_record, str):
-                attr_list = [field_name, 'C', 20, 0]
+                attr_list = [field_name, 'C', 255, 0]  # limit to 255  # ubyte format requires 0 <= number <= 255
             else:
                 basic.outputlogMessage('error, unsupport data type')
                 return False
@@ -590,7 +593,7 @@ class shape_opeation(object):
                 rec = org_records[i]
                 w.records.append(rec)
 
-        basic.outputlogMessage('Remove polygons based on %s, total count: %d' % (class_field_name,removed_count))
+        basic.outputlogMessage('Remove polygons based on %s, count: %d, remain %d ones' % (class_field_name,removed_count, len(w.records)))
         # w._shapes.extend(org_obj.shapes())
 
         # copy prj file
@@ -1262,7 +1265,7 @@ def shape_from_shapely_to_pyshp(shapely_shape,keep_holes=True):
         # record.parts = parts
     return record
 
-def shape_from_pyshp_to_shapely(pyshp_shape):
+def shape_from_pyshp_to_shapely(pyshp_shape,shape_index=None, shp_path=None):
     """
      convert pyshp object to shapely object
     :param pyshp_shape: pyshp (shapefile) object
@@ -1318,9 +1321,15 @@ def shape_from_pyshp_to_shapely(pyshp_shape):
                     polygon = Polygon(shell=exterior,holes=interiors)
                     all_polygons.append(polygon)
                 else:
-                    basic.outputlogMessage('error, holes found in the first ring')
+                    # basic.outputlogMessage('error, holes found in the first ring')
                     basic.outputlogMessage("parts_index:"+str(parts_index)+'\n'+"len of seperate_parts:"+str(len(seperate_parts)))
-                    return False
+                    if shape_index is not None:
+                        basic.outputlogMessage("the %dth (0 index) polygon causing an error, "
+                                               "please check its validity and fix it"%shape_index)
+                    if shp_path is not None:
+                        basic.outputlogMessage("the shape is in file: %s " % shp_path)
+                    raise ValueError('error, holes found in the first ring')
+                    # return False
 
             if len(all_polygons) > 1:
                 record = MultiPolygon(polygons=all_polygons)
@@ -2057,6 +2066,18 @@ def test_get_buffer_polygon():
 
     return  get_buffer_polygons(input_shp, output_shp,buffer_size)
 
+def test_add_one_field_records_to_shapefile():
+
+    shp = '/Users/huanglingcao/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/' \
+          'manu_blh_2017To2019/change_manu_blh_2017To2019_T_201807_vs_201907.shp'
+
+    insert_text = []
+    for idx in range(349):
+        tmp_str = '_'.join([str(i) for i in range(idx+1)])
+        insert_text.append(tmp_str)
+
+    shp_obj = shape_opeation()
+    shp_obj.add_one_field_records_to_shapefile(shp, insert_text, 'text')
 
 def main(options, args):
     # if len(args) != 2:
@@ -2068,11 +2089,13 @@ def main(options, args):
     else:
         parameters.set_saved_parafile_path(options.para_file)
 
-    input = args[0]
-    output = args[1]
-    test(input,output)
+    # input = args[0]
+    # output = args[1]
+    # test(input,output)
 
     # test_get_buffer_polygon()
+
+    test_add_one_field_records_to_shapefile()
 
     pass
 

@@ -12,6 +12,8 @@ import os,shutil
 import basic_src.basic as basic
 import subprocess
 
+from datetime import datetime
+
 def mkdir(path):
     """
     create a folder
@@ -177,6 +179,25 @@ def get_file_list_by_ext(ext,folder,bsub_folder):
 
     return files
 
+def get_file_list_by_pattern_ls(folder,pattern):
+    """
+    get the file list by file pattern
+    :param folder: /home/hlc
+    :param pattern: eg. '*imgAug*.ini'
+    :return: the file list
+    """
+    # get the path of all the porosity profile
+    file_pattern = os.path.join(folder, pattern)
+    # basic.outputlogMessage('find pattern for: '+ file_pattern)
+
+    ## on ITSC service, the following code is not working, output empty, which is strange (9 Dec 2019)
+    proc = subprocess.Popen('ls ' + file_pattern, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    profiles, err = proc.communicate()
+    file_list = profiles.split()
+    # to string, not byte
+    file_list = [item.decode() for item in file_list]
+    return file_list
+
 def get_file_list_by_pattern(folder,pattern):
     """
     get the file list by file pattern
@@ -186,15 +207,36 @@ def get_file_list_by_pattern(folder,pattern):
     """
     # get the path of all the porosity profile
     file_pattern = os.path.join(folder, pattern)
-    proc = subprocess.Popen('ls ' + file_pattern, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    profiles, err = proc.communicate()
-    file_list = profiles.split()
-    # to string, not byte
-    file_list = [item.decode() for item in file_list]
+    # basic.outputlogMessage('find pattern for: '+ file_pattern)
+
+    ## on ITSC service, the following code is not working, output empty, which is strange (9 Dec 2019)
+    # proc = subprocess.Popen('ls ' + file_pattern, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # profiles, err = proc.communicate()
+    # file_list = profiles.split()
+    # # to string, not byte
+    # file_list = [item.decode() for item in file_list]
+
+    import glob
+    file_list = glob.glob(file_pattern)
+
     return file_list
 
 def get_absolute_path(path):
     return os.path.abspath(path)
+
+def get_file_modified_time(path):
+    return datetime.fromtimestamp(os.path.getmtime(path))
+
+def get_file_path_new_home_folder(in_path):
+    # try to change the home folder path if the file does not exist
+    if os.path.isfile(in_path) or os.path.isdir(in_path):
+        return in_path
+    else:
+        tmp_str = in_path.split('/')
+        new_tmp = '~/' + '/'.join(tmp_str[3:])
+        new_path = os.path.expanduser(new_tmp)
+        basic.outputlogMessage('Warning, change to a new path under the new home folder: %s'%new_path)
+        return new_path
 
 def get_name_by_adding_tail(basename,tail):
     """
@@ -238,14 +280,12 @@ def copy_file_to_dst(file_path, dst_name, overwrite=False):
     #     basic.outputlogMessage('warning: shutil.SameFileError')
     #     pass
     except IOError:
-        basic.outputlogMessage(str(IOError))
-        basic.outputlogMessage('copy file failed: '+ file_path)
-        assert False
+        raise IOError('copy file failed: '+ file_path)
 
 
 
     if not os.path.isfile(dst_name):
-        basic.outputlogMessage('copy file failed')
+        basic.outputlogMessage('copy file failed, from %s to %s.'%(file_path,dst_name))
         return False
     else:
         basic.outputlogMessage('copy file success: '+ file_path)
@@ -272,18 +312,19 @@ def move_file_to_dst(file_path, dst_name,overwrite=False):
     try:
         shutil.move(file_path,dst_name)
     except IOError:
-        basic.outputlogMessage(str(IOError))
-        basic.outputlogMessage('move file failed: '+ file_path)
-        assert False
+        raise IOError('move file failed: '+ file_path)
 
-    if not os.path.isfile(dst_name):
-        basic.outputlogMessage('move file failed')
-        return False
-    else:
-        basic.outputlogMessage('move file success: '+ file_path)
+    if os.path.isfile(dst_name):
+        basic.outputlogMessage('move file success: ' + file_path)
         return True
+    elif os.path.isdir(dst_name):
+        basic.outputlogMessage('move folder success: ' + file_path)
+        return True
+    else:
+        basic.outputlogMessage('move file or folder failed, from %s to %s.'%(file_path,dst_name))
+        return False
 
-def movefiletodir(file_path, dir_name):
+def movefiletodir(file_path, dir_name,overwrite=False):
     """
     move file to a destination folder
     Args:
@@ -295,24 +336,9 @@ def movefiletodir(file_path, dir_name):
 
     """
     dst_name =  os.path.join(dir_name,os.path.split(file_path)[1])
-    if os.path.isfile(dst_name):
-        basic.outputlogMessage("%s already exist, skip"%dst_name)
-        return True
-    try:
-        shutil.move(file_path,dst_name)
-    except IOError:
-        basic.outputlogMessage(str(IOError))
-        basic.outputlogMessage('move file failed: '+ file_path)
-        assert False
+    return move_file_to_dst(file_path,dst_name, overwrite=overwrite)
 
-    if not os.path.isfile(dst_name):
-        basic.outputlogMessage('move file failed')
-        return False
-    else:
-        basic.outputlogMessage('move file success: '+ file_path)
-        return True
-
-def copyfiletodir(file_path, dir_name):
+def copyfiletodir(file_path, dir_name,overwrite=False):
     """
     copy file to a destination folder
     Args:
@@ -324,22 +350,7 @@ def copyfiletodir(file_path, dir_name):
 
     """
     dst_name =  os.path.join(dir_name,os.path.split(file_path)[1])
-    if os.path.isfile(dst_name):
-        basic.outputlogMessage("%s already exist, skip"%dst_name)
-        return True
-    try:
-        shutil.copyfile(file_path,dst_name)
-    except IOError:
-        basic.outputlogMessage(str(IOError))
-        basic.outputlogMessage('copy file failed: '+ file_path)
-        assert False
-
-    if not os.path.isfile(dst_name):
-        basic.outputlogMessage('copy file failed')
-        return False
-    else:
-        basic.outputlogMessage('copy file success: '+ file_path)
-        return True
+    return copy_file_to_dst(file_path,dst_name,overwrite=overwrite)
 
 def decompress_gz_file(file_path,work_dir,bkeepmidfile):
     """

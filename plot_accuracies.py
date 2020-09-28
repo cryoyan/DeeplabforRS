@@ -236,7 +236,10 @@ def precision_recall_curve_iou(input_shp,groud_truth_shp):
 def plot_precision_recall_curve(input_shp,groud_truth_shp,save_path):
     # from sklearn.metrics import precision_recall_curve
 
-    from sklearn.utils.fixes import signature
+    try:
+        from sklearn.utils.fixes import signature
+    except ImportError:
+        from funcsigs import signature
 
     precision, recall, _ = precision_recall_curve_iou(input_shp,groud_truth_shp)
 
@@ -269,12 +272,12 @@ def plot_precision_recall_curve(input_shp,groud_truth_shp,save_path):
     plt.savefig(save_path,dpi=300)
     basic.outputlogMessage("Output figures to %s" % os.path.abspath(save_path))
 
-def plot_precision_recall_curve_multi(input_shp_list,groud_truth_shp,save_path):
+def plot_precision_recall_curve_multi(input_shp_list,groud_truth_shp,save_path,legend_loc='best'):
     """
     plot precision_recall of multi shapefiles to a figure
     Args:
         input_shp_list: a list of shapefiles
-        groud_truth_shp: the ground truth fiel
+        groud_truth_shp: the ground truth file or a list
         save_path: output figure path
 
     Returns:
@@ -285,8 +288,14 @@ def plot_precision_recall_curve_multi(input_shp_list,groud_truth_shp,save_path):
     recall_list = []
     average_precision_list = []
     line_labels = []
+
+    # label_set = ['2017','2018','2019']
+
     for idx,input_shp in enumerate(input_shp_list):
-        precision, recall, _ = precision_recall_curve_iou(input_shp, groud_truth_shp)
+        if isinstance(groud_truth_shp, list):
+            precision, recall, _ = precision_recall_curve_iou(input_shp, groud_truth_shp[idx])
+        else:
+            precision, recall, _ = precision_recall_curve_iou(input_shp, groud_truth_shp)
         precision_list.append(precision)
         recall_list.append(recall)
 
@@ -296,12 +305,16 @@ def plot_precision_recall_curve_multi(input_shp_list,groud_truth_shp,save_path):
         file_name = os.path.splitext(os.path.basename(input_shp))[0]
         if 'fold' in file_name:     # k-fold cross-validation
             tmp = file_name.split('_')
-            label = '_'.join(tmp[-3:])
+            if 'rmTimeiou' in file_name:
+                label = '_'.join(tmp[-4:-1])
+            else:
+                label = '_'.join(tmp[-3:])
         elif 'imgAug' in file_name: # image augmentation test
             tmp = file_name.split('_')
             label = tmp[-1]
         else:
             label = str(idx)
+            # label = label_set[idx]
 
         line_labels.append('%s: AP=%.2f'%(label,average_precision))
 
@@ -342,7 +355,11 @@ def plot_precision_recall_curve_multi(input_shp_list,groud_truth_shp,save_path):
     plt.ylim([-0.01, 1.05])
     plt.xlim([-0.01, 1.01])
     plt.title('Precision-Recall curve')
-    plt.legend(loc='best', bbox_to_anchor=(1, 0.5), title="Average Precision", fontsize=9)
+    print('********legend_loc*************', legend_loc)
+    if legend_loc=='best':
+        plt.legend(loc='best', bbox_to_anchor=(1, 0.5), title="Average Precision", fontsize=9)
+    else:
+        plt.legend(loc=legend_loc, title="Average Precision", fontsize=9)
 
     # plt.show()
     plt.savefig(save_path, dpi=300)
