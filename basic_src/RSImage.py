@@ -12,6 +12,9 @@ import sys,os,json,subprocess,numpy
 # import basic
 from basic_src import basic
 
+
+# node: import gdal clobbering PATH environment variable on Ubuntu, add on 11 Nov 2020  gdal version 2.3.3
+# https://github.com/OSGeo/gdal/issues/1231
 try:
     from osgeo import ogr, osr, gdal
 except:
@@ -418,7 +421,9 @@ def get_image_histogram_oneband(image_path, band_idx=1):
     Returns: hist_count (bucket count) ,hist_min, hist_max,hist_buckets
 
     """
-    CommandString = 'gdalinfo -json -hist -mm ' + image_path
+    # -stats: Force computation if no statistics are stored in an image
+    # -mm: Force computation of the actual min/max values for each band in the dataset.
+    CommandString = 'gdalinfo -json -hist -mm -stats ' + image_path
     imginfo = basic.exec_command_string_output_string(CommandString)
     if imginfo is False:
         return False
@@ -462,6 +467,31 @@ def get_valid_pixel_count(image_path):
     for count in hist_buckets:
         valid_pixel_count += count
     return valid_pixel_count
+
+def get_valid_pixel_percentage(image_path,total_pixel_num=None):
+    """
+    get the percentage of valid pixels (exclude no_data pixel)
+    assume that the nodata value already be set
+    Args:
+        image_path: path
+        total_pixel_num: total pixel count, for example, the image only cover a portion of the area
+
+    Returns: the percentage (%)
+
+    """
+    valid_pixel_count = get_valid_pixel_count(image_path)
+    if total_pixel_num is None:
+        # get image width and height
+        img_obj = RSImageclass()
+        if img_obj.open(image_path):
+            width = img_obj.GetWidth()
+            height = img_obj.GetHeight()
+            valid_per = 100.0 * valid_pixel_count/ (width * height)
+            return valid_per
+    else:
+        valid_per = 100.0 * valid_pixel_count / total_pixel_num
+        return valid_per
+    return False
 
 def get_image_location_value(imagepath,x,y,xy_srs,bandindex):
     """
@@ -577,6 +607,8 @@ def get_image_latlon_centre(imagepath):
 #codes from http://gis.stackexchange.com/
 def GetCornerCoordinates(FileName):
     GdalInfo = subprocess.check_output('gdalinfo {}'.format(FileName), shell=True)
+    # to string, not byte
+    GdalInfo = GdalInfo.decode()
     GdalInfo = GdalInfo.splitlines() #split('/n') # Creates a line by line list.
     CornerLats, CornerLons = numpy.zeros(5), numpy.zeros(5)
     GotUL, GotUR, GotLL, GotLR, GotC = False, False, False, False, False

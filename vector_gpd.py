@@ -425,6 +425,30 @@ def calculate_polygon_shape_info(polygon_shapely):
 
     return shape_info
 
+def save_shapefile_subset_as(data_poly_indices, org_shp, save_path):
+    '''
+    save subset of shapefile
+    :param data_poly_indices: polygon index
+    :param org_shp: orignal shapefile
+    :param save_path: save path
+    :return: True if successful
+    '''
+    if len(data_poly_indices) < 1:
+        raise ValueError('no input index')
+
+    save_count = len(data_poly_indices)
+    shapefile = gpd.read_file(org_shp)
+    nrow, ncol = shapefile.shape
+
+    selected_list = [False]*nrow
+    for idx in data_poly_indices:
+        selected_list[idx] = True
+
+    shapefile_sub = shapefile[selected_list]
+    shapefile_sub.to_file(save_path, driver='ESRI Shapefile')
+    basic.outputlogMessage('save subset (%d geometry) of shapefile to %s'%(save_count,save_path))
+
+    return True
 
 def save_polygons_to_files(data_frame, geometry_name, wkt_string, save_path):
     '''
@@ -613,6 +637,57 @@ def fill_holes_in_a_polygon(polygon):
         return Polygon(list(polygon.exterior.coords))
     else:
         return polygon
+
+def get_poly_index_within_extent(polygon_list, extent_poly):
+    '''
+    get id of polygons intersecting with an extent
+    (may also consider using ogr2ogr to crop the shapefile, also can use remove functions)
+    :param polygon_list: polygons list (polygon is in shapely format)
+    :param extent_poly: extent polygon (shapely format)
+    :return: id list
+    '''
+    idx_list = []
+    for idx, poly in enumerate(polygon_list):
+        inter = extent_poly.intersection(poly)
+        if inter.is_empty is False:
+            idx_list.append(idx)
+
+    return idx_list
+
+def get_overlap_area_two_boxes(box1, box2, buffer=None):
+    '''
+    get overlap areas of two box
+    :param box1: bounding box: (left, bottom, right, top)
+    :param box2: bounding box: (left, bottom, right, top)
+    :return: area
+    '''
+    # print(box1,box1[0],box1[1],box1[2],box1[3])
+    letftop1 = (box1[0],box1[3])
+    righttop1 = (box1[2],box1[3])
+    rightbottom1 = (box1[2],box1[1])
+    leftbottom1 = (box1[0],box1[1])
+    polygon1 = Polygon([letftop1, righttop1,rightbottom1,leftbottom1])
+    # print(polygon1)
+
+    letftop2 = (box2[0],box2[3])
+    righttop2 = (box2[2],box2[3])
+    rightbottom2 = (box2[2],box2[1])
+    leftbottom2 = (box2[0],box2[1])
+    polygon2 = Polygon([letftop2, righttop2,rightbottom2,leftbottom2])
+
+    if buffer is not None:
+        polygon1 = polygon1.buffer(buffer)
+        polygon2 = polygon2.buffer(buffer)
+
+    inter = polygon1.intersection(polygon2)
+    # inter = polygon2.intersection(polygon1)
+    if inter.is_empty:
+        return 0
+    if inter.geom_type == 'Polygon':
+        return inter.area
+    else:
+        raise ValueError('need more support of the type: %s'% str(inter.geom_type))
+
 
 def main(options, args):
 

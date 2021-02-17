@@ -51,9 +51,9 @@ class RSImgProclass(object):
             return False
         # offsetvalue = None
         # print image_obj.GetGDALDataType()
-        if image_obj.GetGDALDataType() is 3:    #GDT_Int16
+        if image_obj.GetGDALDataType() == 3:    #GDT_Int16
             offsetvalue  = struct.unpack('h'*width*height, offsetvaluestr)
-        elif image_obj.GetGDALDataType() is 6:
+        elif image_obj.GetGDALDataType() == 6:
             offsetvalue  = struct.unpack('f'*width*height, offsetvaluestr)
         else:
             basic.outputlogMessage('error: not support datatype currently')
@@ -139,7 +139,66 @@ class RSImgProclass(object):
 
         return outputfile
 
-def mosaics_images(raster_files,outputfile,nodata):
+def mosaic_crop_images_gdalwarp(raster_files,outputfile,src_nodata=None,dst_nodata=None,min_x=None,min_y=None, max_x=None, max_y=None,
+                                xres=None,yres=None,resampling_method='min', o_format='GTiff',
+                                compress=None,tiled=None, bigtiff=None):
+    '''
+    create a mosaic from multiple input raster using gdalwarp, crop if min_x, min_y, max_x, max_y are valid
+    Args:
+        raster_files: input raster list
+        outputfile: output file
+        src_nodata:
+        dst_nodata:
+        min_x:
+        min_y:
+        max_x:
+        max_y:
+        xres:
+        yres:
+        resampling_method: including, average, mode, max, min, med, q1, q3, sum  https://gdal.org/programs/gdalwarp.html
+        o_format: output format, default is GTiff, GeoTIFF File Format. Use "VRT": GDAL Virtual Format to save disk storage
+
+    Returns:
+
+    '''
+
+    if isinstance(raster_files,list) is False:
+        # raise ValueError('the type of raster_files must be list')
+        basic.outputlogMessage('the type of raster_files must be list')
+        return False
+
+    if len(raster_files)<1:
+        # raise ValueError('file count less than 1')
+        basic.outputlogMessage('file count less than 1')
+        return False
+
+    CommandString = 'gdalwarp -r ' + resampling_method + ' -of ' + o_format
+
+    if src_nodata != None:
+        CommandString += ' -srcnodata ' +  str(src_nodata)
+    if dst_nodata != None:
+        CommandString += ' -dstnodata ' + str(dst_nodata)
+
+    if min_x != None and min_y != None and max_x != None and max_y!= None:
+        CommandString += ' -te ' + str(min_x)+' '+str(min_y)+' '+str(max_x)+' '+str(max_y)
+
+    if xres !=None and yres!=None:
+        CommandString += ' -tr ' + str(xres) + ' ' +str(yres)
+
+    if compress != None:
+        CommandString += ' -co ' + 'compress=%s'%compress       # lzw
+    if tiled != None:
+        CommandString += ' -co ' + 'TILED=%s'%tiled     # yes
+    if bigtiff != None:
+        CommandString += ' -co ' + 'bigtiff=%s' % bigtiff  # IF_SAFER
+
+    inputfiles = ' '.join(raster_files)
+    CommandString += ' ' + inputfiles + ' ' + outputfile
+
+    return basic.exec_command_string_one_file(CommandString,outputfile)
+
+
+def mosaics_images(raster_files,outputfile,nodata=None):
     """
     mosaic a set of images. All the images must be in the same coordinate system and have a matching number of bands,
     Args:
@@ -161,7 +220,9 @@ def mosaics_images(raster_files,outputfile,nodata):
         if io_function.is_file_exist(raster_files[i]) is False:
             return False
         inputfile = inputfile + ' ' + raster_files[i]
-    CommandString = 'gdal_merge.py ' + inputfile +  ' -o '+ outputfile + ' -n ' + str(nodata)
+    CommandString = 'gdal_merge.py ' + inputfile +  ' -o '+ outputfile
+    if nodata is not None:
+        CommandString += ' -n ' + str(nodata)
     return basic.exec_command_string_one_file(CommandString,outputfile)
 
 def subset_image_baseimage(output_file,input_file,baseimage,same_res=False):
@@ -199,7 +260,8 @@ def subset_image_baseimage(output_file,input_file,baseimage,same_res=False):
         return False
     return True
 
-def subset_image_projwin(output,imagefile,ulx,uly,lrx,lry,dst_nondata=0,xres=None,yres=None):
+def subset_image_projwin(output,imagefile,ulx,uly,lrx,lry,resample_m='bilinear',dst_nondata=0,xres=None,yres=None,
+                         o_format='GTiff',compress=None, tiled=None, bigtiff=None):
     #bug fix: the origin (x,y) has a difference between setting one when using gdal_translate to subset image 2016.7.20
     # CommandString = 'gdal_translate  -r bilinear  -eco -projwin ' +' '+str(ulx)+' '+str(uly)+' '+str(lrx)+' '+str(lry)\
     # + ' '+imagefile + ' '+output
@@ -215,12 +277,26 @@ def subset_image_projwin(output,imagefile,ulx,uly,lrx,lry,dst_nondata=0,xres=Non
     #                     + ' -tr ' +str(xres) + ' ' +str(yres) +' ' + ' -dstnodata '+ str(dst_nondata) + ' '+ imagefile + ' ' + output
 
     # update on 2018 Oct 20, we should not set nodata in subset opertion. It will copy from the source dataset
-    if xres is None or yres is None:
-        CommandString = 'gdalwarp -r bilinear -te  ' +' '+str(xmin)+' '+str(ymin)+' '+str(xmax)+' '+str(ymax)\
-        + ' ' + ' '+imagefile + ' '+output
-    else:
-        CommandString = 'gdalwarp -r bilinear -te  ' + ' ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax) \
-                        + ' -tr ' +str(xres) + ' ' +str(yres) +' ' + ' '+ imagefile + ' ' + output
+
+    CommandString = 'gdalwarp -r %s '%resample_m + ' -of ' + o_format
+    CommandString += ' -te ' + str(xmin) + ' ' + str(ymin) + ' ' + str(xmax) + ' ' + str(ymax)
+
+    # if src_nodata != None:
+    #     CommandString += ' -srcnodata ' +  str(src_nodata)
+    # if dst_nodata != None:
+    #     CommandString += ' -dstnodata ' + str(dst_nodata)
+
+    if xres !=None and yres!=None:
+        CommandString += ' -tr ' + str(xres) + ' ' +str(yres)
+
+    if compress != None:
+        CommandString += ' -co ' + 'compress=%s'%compress       # lzw
+    if tiled != None:
+        CommandString += ' -co ' + 'TILED=%s'%tiled     # yes
+    if bigtiff != None:
+        CommandString += ' -co ' + 'bigtiff=%s' % bigtiff  # IF_SAFER
+
+    CommandString += ' '+ imagefile + ' ' + output
 
     return basic.exec_command_string_one_file(CommandString,output)
 
@@ -232,13 +308,78 @@ def subset_image_srcwin(output,imagefile,xoff,yoff,xsize,ysize):
 def subsetLandsat7_Jakobshavn_shape(imagefile,shapefile,bkeepmidfile):
     return subset_image_by_shapefile(imagefile,shapefile,bkeepmidfile)
 
-def subset_image_by_shapefile(imagefile,shapefile,bkeepmidfile):
+def subset_image_by_polygon_box_image_min(output, imagefile, polygon, resample_m='bilinear', xres=None, yres=None,
+                                          o_format='GTiff',compress=None, tiled=None, bigtiff=None):
+    '''
+    crop a image using the box of a shapely polygon. The polygon and image should in the same projection, not check here
+    # if the image extent is small then box, then use image extent
+    Args:
+        output:
+        imagefile:
+        polygon:
+        xres:
+        yres:
+
+    Returns: output path if successful, False otherwise
+
+    '''
+
+    # #  polygon.exterior.coords
+    minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
+    # print(minx, miny, maxx, maxy)
+    img_extent = RSImage.get_image_proj_extent(imagefile)  # (ulx,uly,lrx,lry)
+    im_minx, im_maxy, im_maxx, im_miny = img_extent
+
+    # chose the smallest extent
+    minx = max(minx,im_minx)
+    maxx = min(maxx,im_maxx)
+    miny = max(miny,im_miny)
+    maxy = min(maxy,im_maxy)
+
+    result = subset_image_projwin(output,imagefile,minx, maxy, maxx, miny, resample_m=resample_m, xres=xres,yres=yres,
+                                  o_format=o_format,compress=compress, tiled=tiled, bigtiff=bigtiff)
+
+    if result is False:
+        basic.outputlogMessage('Warning, Crop %s failed'%imagefile)
+        return False
+    return result
+
+
+def subset_image_by_polygon_box(output, imagefile, polygon, resample_m='bilinear', xres=None, yres=None,
+                                o_format='GTiff',compress=None, tiled=None, bigtiff=None):
+    '''
+    crop a image using the box of a shapely polygon. The polygon and image should in the same projection, not check here
+    Args:
+        output:
+        imagefile:
+        polygon:
+        xres:
+        yres:
+
+    Returns: output path if successful, False otherwise
+
+    '''
+
+    # #  polygon.exterior.coords
+    minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
+    # print(minx, miny, maxx, maxy)
+    result = subset_image_projwin(output,imagefile,minx, maxy, maxx, miny, resample_m=resample_m, xres=xres,yres=yres,
+                                  o_format=o_format,compress=compress, tiled=tiled, bigtiff=bigtiff)
+
+    if result is False:
+        basic.outputlogMessage('Warning, Crop %s failed'%imagefile)
+        return False
+    return result
+
+def subset_image_by_shapefile(imagefile,shapefile,bkeepmidfile=True, overwrite=False, format='GTiff'):
     """
     subset an image by polygons contained in the shapefile
+    the shapefile and imagefile may have different projections, the gdalwarp can handle
     Args:
         imagefile:input image file path
         shapefile:input shapefile contains polygon
         bkeepmidfile:indicate whether keep middle file
+        format: output format,  default is GTiff, GeoTIFF File Format. Use "VRT": GDAL Virtual Format to save disk storage
 
     Returns:output file name if succussful, False Otherwise
 
@@ -258,13 +399,17 @@ def subset_image_by_shapefile(imagefile,shapefile,bkeepmidfile):
     # subprocess.call(['gdalwarp', imagefile, Outfilename, '-cutline', shapefile,\
     #                       '-crop_to_cutline'])
 
+    if overwrite is False and os.path.isfile(Outfilename):
+        basic.outputlogMessage('warning, crop file: %s already exist, skip'%Outfilename)
+        return Outfilename
+
     orgimg_obj = RSImageclass()
     if orgimg_obj.open(imagefile) is False:
         return False
     x_res = abs(orgimg_obj.GetXresolution())
     y_res = abs(orgimg_obj.GetYresolution())
 
-    CommandString = 'gdalwarp '+' -tr ' + str(x_res) + '  '+ str(y_res)+ ' '+ imagefile +' ' + Outfilename +' -cutline ' +shapefile +' -crop_to_cutline ' + ' -overwrite '
+    CommandString = 'gdalwarp '+' -tr ' + str(x_res) + '  '+ str(y_res)+ ' -of ' + format + ' ' + imagefile +' ' + Outfilename +' -cutline ' +shapefile +' -crop_to_cutline ' + ' -overwrite '
     if basic.exec_command_string_one_file(CommandString,Outfilename) is False:
         return False
 
@@ -356,7 +501,7 @@ def convert_image_to_gray_auto(output_image,input_image):
     # GDT_UInt32 = 4, GDT_Int32 = 5, GDT_Float32 = 6, GDT_Float64 = 7,
     # GDT_CInt16 = 8, GDT_CInt32 = 9, GDT_CFloat32 = 10, GDT_CFloat64 = 11,
     #GDT_Byte
-    if input_image_obj.GetGDALDataType() is 1:
+    if input_image_obj.GetGDALDataType() == 1:
         # io_function.copy_file_to_dst(input_image,output_image)
         output_image = input_image
         return output_image

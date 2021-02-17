@@ -53,7 +53,7 @@ def cal_add_area_length_of_polygon(input_shp):
     """
     return vector_features.cal_area_length_of_polygon(input_shp )
 
-def calculate_gully_topography(polygons_shp,dem_file,slope_file,aspect_file=None):
+def calculate_polygon_topography(polygons_shp,dem_file,slope_file,aspect_file=None, dem_diff=None):
     """
     calculate the topography information such elevation and slope of each polygon
     Args:
@@ -128,6 +128,14 @@ def calculate_gully_topography(polygons_shp,dem_file,slope_file,aspect_file=None
             return False
     else:
         basic.outputlogMessage('warning, aspect file not exist, ignore adding aspect information')
+
+    # elevation difference
+    if dem_diff is not None and os.path.isfile(dem_diff):
+        stats_list = ['min', 'max', 'mean', 'median', 'std']
+        if operation_obj.add_fields_from_raster(polygons_shp, dem_diff, "demD", band=1,stats_list=stats_list,all_touched=all_touched) is False:
+            return False
+    else:
+        basic.outputlogMessage('warning, dem difference file not exist, ignore adding dem diff information')
 
     # # hillshape
 
@@ -253,8 +261,24 @@ def remove_small_round_polygons(input_shp,output_shp,area_thr,ratio_thr):
 
     return True
 
+def get_file_path_parameter(parafile,multi_files, one_file):
 
+    multi_files = parameters.get_string_parameters_None_if_absence(parafile, multi_files)
+    if multi_files is None:
+        one_file = parameters.get_string_parameters_None_if_absence(parafile, one_file)
+    else:
+        one_file = io_function.get_path_from_txt_list_index(multi_files)
+        one_file = io_function.get_file_path_new_home_folder(one_file)
+    return one_file
 
+def get_topographic_files(data_para_file):
+
+    dem_file = get_file_path_parameter(data_para_file,'multi_dem_files', 'dem_file')
+    slope_file = get_file_path_parameter(data_para_file,'multi_slope_files', 'slope_file')
+    aspect_file = get_file_path_parameter(data_para_file, 'multi_aspect_files', 'aspect_file')
+    dem_diff_file = get_file_path_parameter(data_para_file, 'multi_dem_diff_files', 'dem_diff_file')
+
+    return dem_file, slope_file, aspect_file,dem_diff_file
 
 def main(options, args):
     input = args[0]
@@ -263,6 +287,9 @@ def main(options, args):
     if io_function.is_file_exist(input) is False:
         return False
 
+    data_para_file = options.data_para
+    if data_para_file is None:
+        data_para_file = options.para_file
     ## remove non-gully polygons
     # output_rm_nonclass = io_function.get_name_by_adding_tail(input, 'rm_nonclass')
     # if remove_nonclass_polygon(input,output_rm_nonclass,field_name='svmclass') is False:
@@ -278,8 +305,7 @@ def main(options, args):
     if io_function.copy_shape_file(input, output) is False:
         raise IOError('copy shape file %s failed'%input)
     else:
-        # remove "_shapeInfo.shp" to make it calculate shape information again
-        os.system('rm *_shapeInfo.shp')
+        pass
 
     # remove narrow parts of mapped polygons
     polygon_narrow_part_thr = parameters.get_digit_parameters_None_if_absence('', 'mapped_polygon_narrow_threshold', 'float')
@@ -295,13 +321,17 @@ def main(options, args):
     else:
         basic.outputlogMessage("warning, mapped_polygon_narrow_threshold is not in the parameter file, skip removing narrow parts")
 
-    # calcuate area, perimeter of polygons
+    # calculate area, perimeter of polygons
     if cal_add_area_length_of_polygon(output) is False:
         return False
 
     # calculate the polygon information
-    if calculate_gully_information(output) is False:
-        return False
+    b_calculate_shape_info = parameters.get_bool_parameters_None_if_absence('','b_calculate_shape_info')
+    if b_calculate_shape_info:
+        # remove "_shapeInfo.shp" to make it calculate shape information again
+        os.system('rm *_shapeInfo.shp')
+        if calculate_gully_information(output) is False:
+            return False
 
     # # remove small and not narrow polygons
     # if options.min_area is None:
@@ -317,12 +347,9 @@ def main(options, args):
     # if remove_small_round_polygons(ouput_merged,output,area_thr,ratio_thr) is False:
     #     return False
 
-
     # add topography of each polygons
-    dem_file = parameters.get_dem_file()
-    slope_file = parameters.get_slope_file()
-    aspect_file=parameters.get_aspect_file()
-    if calculate_gully_topography(output,dem_file,slope_file,aspect_file) is False:
+    dem_file, slope_file, aspect_file, dem_diff_file = get_topographic_files(data_para_file)
+    if calculate_polygon_topography(output,dem_file,slope_file,aspect_file=aspect_file,dem_diff=dem_diff_file) is False:
         basic.outputlogMessage('Warning: calculate information of topography failed')
         # return False   #  don't return
 
@@ -355,6 +382,10 @@ if __name__=='__main__':
                       action="store", dest="para_file",
                       help="the parameters file")
 
+    parser.add_option("-d", "--data_para",
+                      action="store", dest="data_para",
+                      help="the parameters file for data")
+
     parser.add_option("-a", "--min_area",
                       action="store", dest="min_area",type=float,
                       help="the minimum for each polygon")
@@ -378,7 +409,7 @@ if __name__=='__main__':
     # ouput_merged = args[0]
     # dem_file = parameters.get_dem_file()
     # slope_file = parameters.get_slope_file()
-    # calculate_gully_topography(ouput_merged,dem_file,slope_file)
+    # calculate_polygon_topography(ouput_merged,dem_file,slope_file)
 
 
 
