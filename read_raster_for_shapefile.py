@@ -404,7 +404,7 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
 
                 coh_mean = np.around(np.mean(unmasked_coh), 2)
                 ratio = np.around(np.size(coh) / np.size(unmasked_coh), 2)
-                print(coh_mean, ratio)
+                # print(coh_mean, ratio)
 
             #calculate mean slope and aspect for each RG
             slp_rad = np.around(np.mean(unmasked_slp), 2)
@@ -412,6 +412,7 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
 
             slp_deg = math.degrees(slp_rad)
             asp_deg = math.degrees(asp_rad)
+            print(slp_deg, asp_deg)
 
             result = open(out_file_name, 'a')
             result.write(str(sensor) + ',' + str(PF_name) + ',' + str(dates) + ',' + str(TARGET_name) + ','
