@@ -410,9 +410,9 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             slp_rad = np.around(np.mean(unmasked_slp), 2)
             asp_rad = np.around(np.mean(unmasked_asp), 2)
 
-            slp_deg = math.degrees(slp_rad)
-            asp_deg = math.degrees(asp_rad)
-            print(slp_deg, asp_deg)
+            # slp_deg = math.degrees(slp_rad)
+            # asp_deg = math.degrees(asp_rad)
+            print(slp_rad, asp_rad)
 
             result = open(out_file_name, 'a')
             result.write(str(sensor) + ',' + str(PF_name) + ',' + str(dates) + ',' + str(TARGET_name) + ','
@@ -420,7 +420,7 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
                          + str(vel_max) + ',' + str(error_max_vel) + ','
                          + str(vel_median) + ',' + str(error_median_vel) + ','
                          + str(vel_std) + ',' + str(coh_mean) + ',' + str(ratio) + ','
-                         + str(slp_deg) + ',' + str(asp_deg) + '\n')
+                         + str(slp_rad) + ',' + str(asp_rad) + '\n')
             result.close()
             shp_count = shp_count + 1
         # print('From list:', name_list)
