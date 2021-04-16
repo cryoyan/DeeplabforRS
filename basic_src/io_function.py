@@ -14,6 +14,9 @@ import subprocess
 
 from datetime import datetime
 
+import json
+import urllib
+
 def mkdir(path):
     """
     create a folder
@@ -61,6 +64,39 @@ def delete_file_or_dir(path):
         assert False
 
     return True
+
+def is_file_exist_subfolder(folder, file_name,bsub_folder=True):
+    """
+    determine whether the file_path is a in a folder or its subfolder
+    Args:
+        file_name: the file name
+
+    Returns:True if file path, False otherwise
+
+    """
+    if os.path.isfile(os.path.join(folder,file_name)):
+        return os.path.join(folder,file_name)
+
+    if bsub_folder is False:
+        return False
+
+    sub_folders = [os.path.join(folder,item) for item in os.listdir(folder)]
+    sub_folders = [item for item in sub_folders if os.path.isdir(item)]
+
+    while len(sub_folders) > 0:
+        current_sear_dir = sub_folders[0]
+        t_path = os.path.join(current_sear_dir, file_name)
+        if os.path.isfile(t_path):
+            return t_path
+
+        file_names = [ os.path.join(current_sear_dir,item) for item in os.listdir(current_sear_dir)]
+        dir_paths = [item for item in file_names if os.path.isdir(item)]
+        sub_folders.extend(dir_paths)
+
+        sub_folders.pop(0)
+
+    return False
+
 
 def is_file_exist(file_path):
     """
@@ -164,14 +200,16 @@ def get_file_list_by_ext(ext,folder,bsub_folder):
     while len(sub_folders) > 0:
         current_sear_dir = sub_folders[0]
         file_names = os.listdir(current_sear_dir)
+        file_names = [os.path.join(current_sear_dir,item) for item in file_names]
         for str_file in file_names:
             if os.path.isdir(str_file):
-                sub_folders.append(os.path.join(current_sear_dir,str_file))
+                sub_folders.append(str_file)
                 continue
             ext_name = os.path.splitext(str_file)[1]
             for temp in extension:
                 if ext_name == temp:
-                    files.append(os.path.abspath(os.path.join(current_sear_dir,str_file)))
+                    # files.append(os.path.abspath(os.path.join(current_sear_dir,str_file)))
+                    files.append(str_file)
                     break
         if bsub_folder is False:
             break
@@ -227,7 +265,20 @@ def get_absolute_path(path):
 def get_file_modified_time(path):
     return datetime.fromtimestamp(os.path.getmtime(path))
 
+def get_url_file_size(url_path):
+    # curl -I url_path
+    req = urllib.request.Request(url_path,method='HEAD')
+    f = urllib.request.urlopen(req)
+    if f.status == 200:
+        size = f.headers['Content-Length']      # in Bytes
+        return int(size)
+
+    basic.outputlogMessage('error, get size of %s failed'%url_path)
+    return False
+
 def get_file_path_new_home_folder(in_path):
+    if in_path is None:
+        return None
     # try to change the home folder path if the file does not exist
     if os.path.isfile(in_path) or os.path.isdir(in_path):
         return in_path
@@ -352,9 +403,42 @@ def copyfiletodir(file_path, dir_name,overwrite=False):
     dst_name =  os.path.join(dir_name,os.path.split(file_path)[1])
     return copy_file_to_dst(file_path,dst_name,overwrite=overwrite)
 
+def unpack_tar_gz_file(file_path,work_dir):
+    '''
+    unpack a *.tar.gz package, the same to decompress_gz_file (has a bug)
+    :param file_path:
+    :param work_dir:
+    :return:  the absolute path of a folder which contains the decompressed files
+    '''
+    if os.path.isdir(work_dir) is False:
+        raise IOError('dir %s not exist'%os.path.abspath(work_dir))
+
+    if file_path.endswith('.tar.gz') is False:
+        raise ValueError('input %s do not end with .tar.gz')
+
+    file_basename = os.path.basename(file_path)[:-7]
+
+    # decompression file and remove it
+    dst_folder = os.path.join(work_dir,file_basename)
+    if os.path.isdir(dst_folder) and len(os.listdir(dst_folder)) > 1:  # on Mac, .DS_Store count one file.
+        basic.outputlogMessage('%s exists and is not empty, skip unpacking'%dst_folder)
+        return dst_folder
+    else:
+        mkdir(dst_folder)
+    # CommandString = 'tar -xvf  ' + file_tar + ' -C ' + dst_folder
+    args_list = ['tar', '-zxvf', file_path,'-C',dst_folder]
+    # (status, result) = basic.exec_command_string(CommandString)
+    returncode = basic.exec_command_args_list(args_list)
+    # print(returncode)
+    if returncode != 0:
+        return False
+
+    return dst_folder
+
+
 def decompress_gz_file(file_path,work_dir,bkeepmidfile):
     """
-    decompress a compressed file with gz extension
+    decompress a compressed file with gz extension (has a bug if end with *.*.tar.gz)
     Args:
         file_path:the path of gz file
         bkeepmidfile: indicate whether keep the middle file(eg *.tar file)
@@ -448,6 +532,77 @@ def copy_shape_file(input, output):
     basic.outputlogMessage('finish copying %s to %s'%(input,output))
 
     return True
+
+def save_list_to_txt(file_name, save_list):
+    with open(file_name, 'w') as f_obj:
+        for item in save_list:
+            f_obj.writelines(item + '\n')
+
+def read_list_from_txt(file_name):
+    with open(file_name,'r') as f_obj:
+        lines = f_obj.readlines()
+        lines = [item.strip() for item in lines]
+        return lines
+
+def save_dict_to_txt_json(file_name, save_dict):
+
+    # check key is string, int, float, bool or None,
+    strKey_dict = {}
+    for key in save_dict.keys():
+        # print(type(key))
+        if type(key) not in [str, int, float, bool, None]:
+            strKey_dict[str(key)] = save_dict[key]
+        else:
+            strKey_dict[key] = save_dict[key]
+
+    # ,indent=2 makes the output more readable
+    json_data = json.dumps(strKey_dict,indent=2)
+    with open(file_name, "w") as f_obj:
+        f_obj.write(json_data)
+
+def read_dict_from_txt_json(file_path):
+    with open(file_path) as f_obj:
+        data = json.load(f_obj)
+        return data
+
+def get_path_from_txt_list_index(txt_name,input=''):
+    '''
+    get the a line (path or file pattern) for a txt files, the index is in the file name
+    Args:
+        txt_name:
+        input:
+
+    Returns:
+
+    '''
+
+    # current folder path
+    cwd_path = os.getcwd()
+    if os.path.isfile(txt_name) is False:
+        # if the txt does not exist, then cd ../.., find the file againn
+        txt_name = os.path.join(os.path.dirname(os.path.dirname(cwd_path)), txt_name)
+    with open(txt_name, 'r') as f_obj:
+        lines = f_obj.readlines()
+        lines = [item.strip() for item in lines]
+
+    # find the index
+    folder = os.path.basename(cwd_path)
+    import re
+    I_idx_str = re.findall('I\d+', folder)
+    if len(I_idx_str) == 1:
+        index = int(I_idx_str[0][1:])
+    else:
+        # try to find the image idx from file name
+        file_name = os.path.basename(input)
+        I_idx_str = re.findall('I\d+', file_name)
+        if len(I_idx_str) == 1:
+            index = int(I_idx_str[0][1:])
+        else:
+            raise ValueError('Cannot find the I* which represents image index')
+
+    val_path = lines[index]
+
+    return val_path
 
 if __name__=='__main__':
     pass

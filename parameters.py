@@ -53,8 +53,9 @@ def read_Parameters_file(parafile,parameter):
             value = lineStrs[1].strip()
             break
     inputfile.close()
-    global saved_parafile_path
-    saved_parafile_path = parafile
+    # don't do this
+    # global saved_parafile_path
+    # saved_parafile_path = parafile
     return value
 
 
@@ -92,7 +93,6 @@ def get_string_parameters(parafile,name):
         parafile = saved_parafile_path
     result = read_Parameters_file(parafile,name)
     if result is False:
-        basic.outputlogMessage('get %s parameter failed'%name)
         raise ValueError('get %s parameter failed'%name)
     else:
         return result
@@ -106,14 +106,25 @@ def get_string_parameters_None_if_absence(parafile,name):
     else:
         return result
 
+def get_directory_None_if_absence(parafile,name):
+    value = get_string_parameters_None_if_absence(parafile,name)
+    if value is None:
+        return None
+    return os.path.expanduser(value)
+
+def get_file_path_parameters_None_if_absence(parafile,name):
+    value = get_string_parameters_None_if_absence(parafile, name)
+    if value is None:
+        return None
+    return os.path.expanduser(value)
+
 def get_bool_parameters(parafile,name,default):
     if parafile =='':
         parafile = saved_parafile_path
     result = read_Parameters_file(parafile,name)
     if result is False:
         if default is None:
-            basic.outputlogMessage('get %s parameter failed'%name)
-            raise ValueError('get %s parameter failed'%name)
+            raise ValueError('get %s parameter (from %s) failed '%(name,parafile))
             # sys.exit(-1);
         else:
             basic.outputlogMessage('get %s parameter failed, the  %s will be set as %s'%(name,name,default))
@@ -144,7 +155,6 @@ def get_digit_parameters(parafile,name,default,datatype):
             basic.outputlogMessage('get %s parameter failed, the  %s will be set as %f'%(name,name,default))
             return default
         else:
-            basic.outputlogMessage('get %s parameter failed, exit'%(name))
             raise ValueError('get %s parameter failed, exit'%(name))
             # return False
     try:
@@ -158,7 +168,6 @@ def get_digit_parameters(parafile,name,default,datatype):
             basic.outputlogMessage('convert %s to digit failed , it be set as %f'%(name,default))
             return default
         else:
-            basic.outputlogMessage('convert %s to digit failed , exit'%(name))
             raise ValueError('convert %s to digit failed , exit'%(name))
 
     return digit_value
@@ -175,10 +184,25 @@ def get_digit_parameters_None_if_absence(parafile,name,datatype):
         else:
             digit_value = float(result)
     except ValueError:
-            basic.outputlogMessage('convert %s to digit failed , exit'%(name))
             raise ValueError('convert %s to digit failed , exit'%(name))
 
     return digit_value
+
+def get_string_list_parameters_None_if_absence(parafile,name):
+    str_value = get_string_parameters(parafile, name)
+    attributes_list = []
+    attributes_init = str_value.split(',')
+    if len(attributes_init) < 1:
+        return None
+    else:
+        for att_str in attributes_init:
+            str_temp = att_str.strip()  # remove certain characters (such as whitespace) from the left and right parts of strings
+            if len(str_temp) > 0:
+                attributes_list.append(str_temp)
+        if len(attributes_list) < 1:
+            return None
+        else:
+            return attributes_list
 
 #endregion
 
