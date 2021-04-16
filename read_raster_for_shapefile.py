@@ -270,8 +270,12 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             vel_los_file = file_path + "/LOS_rasters/" + str(TARGET_name) + "_los"
             unmasked_coh_file = file_path + "/" + str(IFG_name) + ".coh_map"
             # raster slope and aspect
-            slp_file = file_path + "/" + str(IFG_name) + "_slp_rad"
-            asp_file = file_path + "/" + str(IFG_name) + "_asp_rad"
+            slp_file = file_path + "/" + str(TARGET_name) + "_slp"
+            asp_file = file_path + "/" + str(TARGET_name) + "_asp"
+            # unmasked slope and aspect raster for calculating topography
+            unmasked_slp_file = file_path + "/" + str(IFG_name) + "_slp_rad"
+            unmasked_asp_file = file_path + "/" + str(IFG_name) + "_asp_rad"
+
 
             #read coh value of one shape from the coherence raster, inc raster, los azimuth raster into arrays
             geoms_shp = [mapping(geoms[shp_count])]
@@ -301,6 +305,11 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             with rasterio.open(asp_file) as src_asp:
                 out_asp, out_asp_transform = mask(src_asp, geoms_shp, all_touched=True, crop=True)
 
+            with rasterio.open(unmasked_slp_file) as src_unmasked_slp:
+                out_unmasked_slp, out_unmasked_slp_transform = mask(src_unmasked_slp, geoms_shp, all_touched=True, crop=True)
+
+            with rasterio.open(unmasked_asp_file) as src_unmasked_asp:
+                out_unmasked_asp, out_unmasked_asp_transform = mask(src_unmasked_asp, geoms_shp, all_touched=True, crop=True)
 
             out_meta = src_vel.meta.copy()
             out_meta.update({"driver": "GTiff",
@@ -320,6 +329,8 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             no_data_vel = src_vel.nodata
             no_data_slp = src_slp.nodata
             no_data_asp = src_asp.nodata
+            no_data_unmasked_slp = src_unmasked_slp.nodata
+            no_data_unmasked_asp = src_unmasked_asp.nodata
 
             # extract the values of the masked array
             data_coh = out_coh[0]
@@ -330,6 +341,8 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             data_vel = out_vel[0]
             data_slp = out_slp[0]
             data_asp = out_asp[0]
+            data_unmasked_slp = out_unmasked_slp[0]
+            data_unmasked_asp = out_unmasked_asp[0]
 
             # extract the valid values
             coh = np.extract(data_coh != no_data_coh, data_coh)
@@ -341,6 +354,8 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             # print(vel)
             slp = np.extract(data_slp != no_data_slp, data_slp)
             asp = np.extract(data_asp != no_data_asp, data_asp)
+            unmasked_slp = np.extract(data_unmasked_slp != no_data_unmasked_slp, data_unmasked_slp)
+            unmasked_asp = np.extract(data_unmasked_asp != no_data_unmasked_asp, data_unmasked_asp)
 
 
             #calculate downslope velocity error for each pixel and store into array
@@ -391,12 +406,20 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
                 ratio = np.around(np.size(coh) / np.size(unmasked_coh), 2)
                 print(coh_mean, ratio)
 
+            #calculate mean slope and aspect for each RG
+            slp_rad = np.around(np.mean(unmasked_slp), 2)
+            asp_rad = np.around(np.mean(unmasked_asp), 2)
+
+            slp_deg = np.degrees(slp_rad)
+            asp_deg = np.degrees(asp_rad)
+
             result = open(out_file_name, 'a')
             result.write(str(sensor) + ',' + str(PF_name) + ',' + str(dates) + ',' + str(TARGET_name) + ','
                          + str(vel_mean) + ',' + str(error_mean_vel) + ','
                          + str(vel_max) + ',' + str(error_max_vel) + ','
                          + str(vel_median) + ',' + str(error_median_vel) + ','
-                         + str(vel_std) + ',' + str(coh_mean) + ',' + str(ratio) + '\n')
+                         + str(vel_std) + ',' + str(coh_mean) + ',' + str(ratio) + ','
+                         + str(slp_deg) + ',' + str(asp_deg) + '\n')
             result.close()
             shp_count = shp_count + 1
         # print('From list:', name_list)
@@ -488,7 +511,8 @@ def main(options, args):
                  + 'Mean_velocity' + ',' + 'Error_Vmean' + ','
                  + 'Max_velocity' + ',' + 'Error_Vmax' + ','
                  + 'Median_velocity' + ',' + 'Error_Vmed' + ','
-                 + 'Std' + ',' + 'Mean_coherence' + ',' + 'Ratio' + '\n')
+                 + 'Std' + ',' + 'Mean_coherence' + ',' + 'Ratio' + ','
+                 + 'Slope' + 'Aspect' + '\n')
     result.close()
 
     sensor = "ALOS"
