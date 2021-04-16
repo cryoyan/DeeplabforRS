@@ -268,7 +268,7 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             inc_file = file_path + "/INC_rasters/" + str(TARGET_name) + "_inc"
             azi_file = file_path + "/AZI_rasters/" + str(TARGET_name) + "_azi"
             vel_los_file = file_path + "/LOS_rasters/" + str(TARGET_name) + "_los"
-            unmasked_coh_file = file_path + "/" + str(IFG_name) + "_coh_map"
+            unmasked_coh_file = file_path + "/" + str(IFG_name) + ".coh_map"
             # raster slope and aspect
             slp_file = file_path + "/" + str(IFG_name) + "_slp_rad"
             asp_file = file_path + "/" + str(IFG_name) + "_asp_rad"
