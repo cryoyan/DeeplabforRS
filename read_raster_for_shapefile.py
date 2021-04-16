@@ -257,11 +257,17 @@ def cal_vel_error(file_path, shp_file, target_info_list, position_error, dem_err
             # h = float(fields_t[3])
             # d = float(fields_t[4])
 
-            vel_file = file_path + "/" + str(IFG_name) + "_VEL_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_vel"
-            coh_file = file_path + "/" + str(IFG_name) + "_COH_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_coh"
-            inc_file = file_path + "/" + str(IFG_name) + "_INC_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_inc"
-            azi_file = file_path + "/" + str(IFG_name)+ "_AZI_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_azi"
-            vel_los_file = file_path + "/" + str(IFG_name) + "_LOS_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_los"
+            # vel_file = file_path + "/" + str(IFG_name) + "_VEL_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_vel"
+            # coh_file = file_path + "/" + str(IFG_name) + "_COH_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_coh"
+            # inc_file = file_path + "/" + str(IFG_name) + "_INC_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_inc"
+            # azi_file = file_path + "/" + str(IFG_name)+ "_AZI_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_azi"
+            # vel_los_file = file_path + "/" + str(IFG_name) + "_LOS_rasters_" + str(threshold) + "/" + str(TARGET_name) + "_los"
+
+            vel_file = file_path + "/VEL_rasters/" + str(TARGET_name) + "_vel"
+            coh_file = file_path + "/COH_rasters/" + str(TARGET_name) + "_coh"
+            inc_file = file_path + "/INC_rasters/" + str(TARGET_name) + "_inc"
+            azi_file = file_path + "/AZI_rasters/" + str(TARGET_name) + "_azi"
+            vel_los_file = file_path + "/LOS_rasters/" + str(TARGET_name) + "_los"
             unmasked_coh_file = file_path + "/" + str(IFG_name) + "_coh_map"
             # raster slope and aspect
             slp_file = file_path + "/" + str(IFG_name) + "_slp_rad"
