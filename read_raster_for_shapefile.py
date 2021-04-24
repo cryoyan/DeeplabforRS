@@ -182,7 +182,7 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
 
         print(name[idx],start_value, end_value, h, d, slp_deg, asp_deg)
 
-        out_file_name = str(save_path) + "/TARGET_info.list"
+        out_file_name = str(save_path) + "/line_derived_info.list"
         line_result = open(out_file_name, 'a')
         line_result.write(str(name[idx]) + ' ' + str(slp_rad) + ' ' + str(asp_rad) + ' ' + str(h) + ' ' + str(d) + '\n')
         line_result.close()
@@ -485,46 +485,47 @@ def cal_polygon_phs_uncertainty(shp_file, phs_file, coh_file):
 
 def main(options, args):
 #########calculate line aspect###########
-    # shp_file = "/home/huyan/huyan_data/khumbu_valley/shp/Khumbu_creep_lines_lonlat.shp"
-    # dem_file = "/home/huyan/huyan_data/SRTM/khumbu_valley/khumbu_dem_deg.tif"
-    # save_path = "/home/huyan/huyan_data/khumbu_valley/alos/result"
-    #
-    # caluculate_geometry_from_creep_line(shp_file, dem_file, save_path)
-    #
+    shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/creep_line_wkl_mm_all.shp"
+    dem_file = "/home/huyan/huyan_data/SRTM/west_kunlun/WKL_dem.tif"
+    save_path = "/home/huyan/huyan_data/kunlun_data/alos/west_kunlun/result"
+
+    caluculate_geometry_from_creep_line(shp_file, dem_file, save_path)
 
 ######## WKL inventory ########
 
-    file_path = "/home/huyan/huyan_data/kunlun_data/alos/west_kunlun/result"
-    shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/057.shp"
-    target_info_list = file_path + "/sup.list"
+    # file_path = "/home/huyan/huyan_data/kunlun_data/alos/west_kunlun/result"
+    # shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/ARGs_wkl_mm_all_sorted.shp"
+    # target_info_list = file_path + "/ARGs_info.list"
+    #
+    # out_file_name = file_path + "/wkl_vel_stats_line.csv"
+    # # threshold = 0
+    # position_error = 50
+    # # # SRTM: 16; TANDEM: 10
+    # srtm_error = 16
+    # srtm_res = 30
+    # tandem_error = 10
+    # tandem_res = 12
+    #
+    # result = open(out_file_name, 'a')
+    # result.write('Sensor' + ',' + 'Path_Frame' + ',' + 'Dates' + ',' + 'Target_name' + ','
+    #              + 'Mean_velocity' + ',' + 'Error_Vmean' + ','
+    #              + 'Max_velocity' + ',' + 'Error_Vmax' + ','
+    #              + 'Median_velocity' + ',' + 'Error_Vmed' + ','
+    #              + 'Std' + ',' + 'Mean_coherence' + ',' + 'Ratio' + ','
+    #              + 'Slope' + '\n')
+    # result.close()
+    #
+    # # sensor = "ALOS"
+    # # PF_name = "P520_F710"
+    # # dates = ""
+    # wavelen = 23.60571
+    # span = 46
+    # N = 10
+    #
+    # cal_vel_error(file_path, shp_file, target_info_list, position_error, srtm_error, srtm_res, tandem_error, tandem_res,
+    #               wavelen, span, N, out_file_name)
 
-    out_file_name = file_path + "/wkl_vel_stats.csv"
-    # threshold = 0
-    position_error = 50
-    # # SRTM: 16; TANDEM: 10
-    srtm_error = 16
-    srtm_res = 30
-    tandem_error = 10
-    tandem_res = 12
-
-    result = open(out_file_name, 'a')
-    result.write('Sensor' + ',' + 'Path_Frame' + ',' + 'Dates' + ',' + 'Target_name' + ','
-                 + 'Mean_velocity' + ',' + 'Error_Vmean' + ','
-                 + 'Max_velocity' + ',' + 'Error_Vmax' + ','
-                 + 'Median_velocity' + ',' + 'Error_Vmed' + ','
-                 + 'Std' + ',' + 'Mean_coherence' + ',' + 'Ratio' + ','
-                 + 'Slope' + '\n')
-    result.close()
-
-    # sensor = "ALOS"
-    # PF_name = "P520_F710"
-    # dates = ""
-    wavelen = 23.60571
-    span = 46
-    N = 10
-
-    cal_vel_error(file_path, shp_file, target_info_list, position_error, srtm_error, srtm_res, tandem_error, tandem_res,
-                  wavelen, span, N, out_file_name)
+####################
 
    # with open(file_path + "/testRaster.list", "r") as info_file:
    #     for line in info_file:
