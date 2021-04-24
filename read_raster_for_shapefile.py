@@ -182,9 +182,9 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
 
         print(name[idx],start_value, end_value, h, d, slp_deg, asp_deg)
 
-        out_file_name = str(save_path) + "/line_derived_info.txt"
+        out_file_name = str(save_path) + "/line_derived_info.csv"
         line_result = open(out_file_name, 'a')
-        line_result.write(str(name[idx]) + ' ' + str(slp_rad) + ' ' + str(asp_rad) + ' ' + str(h) + ' ' + str(d) + '\n')
+        line_result.write(str(name[idx]) + ',' + str(slp_rad) + ',' + str(asp_rad) + ',' + str(h) + ',' + str(d) + '\n')
         line_result.close()
 
 def calculate_line_aspect(shp_file, dem_file, save_path):
