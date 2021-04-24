@@ -485,7 +485,7 @@ def cal_polygon_phs_uncertainty(shp_file, phs_file, coh_file):
 
 def main(options, args):
 #########calculate line aspect###########
-    shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/creep_line_wkl_mm_all.shp"
+    shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/creep_line_wkl_mm_all_sorted.shp"
     dem_file = "/home/huyan/huyan_data/SRTM/west_kunlun/WKL_dem.tif"
     save_path = "/home/huyan/huyan_data/kunlun_data/alos/west_kunlun/result"
 
