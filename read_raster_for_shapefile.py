@@ -497,7 +497,7 @@ def main(options, args):
     shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/ARGs_wkl_mm_all_sorted.shp"
     target_info_list = file_path + "/ARGs_info.list"
 
-    out_file_name = file_path + "/wkl_vel_stats_line.csv"
+    out_file_name = file_path + "/wkl_vel_stats.csv"
     # threshold = 0
     position_error = 50
     # # SRTM: 16; TANDEM: 10
