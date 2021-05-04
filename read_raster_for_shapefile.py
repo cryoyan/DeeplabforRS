@@ -149,7 +149,7 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
 
     # read shape file
     lines = gpd.read_file(shp_file)
-    line_count = lines['Name'].count()
+    line_count = lines['id'].count()
     name = []
 
     # get value of points
