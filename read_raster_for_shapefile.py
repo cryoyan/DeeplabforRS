@@ -183,7 +183,7 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
 
         print(name[idx],start_value, end_value, h, d, slp_deg, asp_deg)
 
-        out_file_name = str(save_path) + "/dl_line_derived_info.csv"
+        out_file_name = str(save_path) + "/mm_line_derived_info.csv"
         line_result = open(out_file_name, 'a')
         line_result.write(str(name[idx]) + ',' + str(asp_rad) + ',' + str(start_value) + ',' + str(end_value) + ',' + str(mean_ele) + ',' + str(h) + '\n')
         line_result.close()
@@ -486,7 +486,7 @@ def cal_polygon_phs_uncertainty(shp_file, phs_file, coh_file):
 
 def main(options, args):
 #########calculate line aspect###########
-    shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/dl_creep_line.shp"
+    shp_file = "/home/huyan/huyan_data/kunlun_data/LAB/analysis_westkunlun/shapefiles/mm_creep_line.shp"
     dem_file = "/home/huyan/huyan_data/SRTM/west_kunlun/WKL_dem.tif"
     save_path = "/home/huyan/huyan_data/kunlun_data/alos/west_kunlun/result"
 
