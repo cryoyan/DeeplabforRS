@@ -157,7 +157,7 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
 
     for idx in range(line_count):
 
-        name.append(lines['Name'][idx])
+        name.append(lines['id'][idx])
         # read value of start point
         start_value = read_dem_basedON_location(start_point[idx][0], start_point[idx][1], dem_file)
         # read value of end point
