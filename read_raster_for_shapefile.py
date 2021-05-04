@@ -164,6 +164,7 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
         end_value = read_dem_basedON_location(end_point[idx][0], end_point[idx][1], dem_file)
 
         h = start_value - end_value
+        mean_ele = (start_value + end_value) / 2
 
         # calculate bearing of line/aspect of RGs; from lon and lat
         lat1 = math.radians(start_point[idx][1])
@@ -184,7 +185,7 @@ def caluculate_geometry_from_creep_line(shp_file, dem_file, save_path):
 
         out_file_name = str(save_path) + "/dl_line_derived_info.csv"
         line_result = open(out_file_name, 'a')
-        line_result.write(str(name[idx]) + ',' + str(slp_rad) + ',' + str(asp_rad) + ',' + str(h) + ',' + str(d) + '\n')
+        line_result.write(str(name[idx]) + ',' + str(asp_rad) + ',' + str(start_value) + ',' + str(end_value) + ',' + str(mean_ele) + ',' + str(h) + '\n')
         line_result.close()
 
 def calculate_line_aspect(shp_file, dem_file, save_path):
